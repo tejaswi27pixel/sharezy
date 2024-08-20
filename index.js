@@ -6,16 +6,7 @@ const fs = require("fs");
 const app = express();
 const cors = require("cors");
 
-// var corsOptions = {
-//   origin: [
-//     "http://localhost:3000",
-//     "http://192.168.1.5:3000",
-//     "**"
-//   ],
-//   optionsSuccessStatus: 200,
-// };
 app.use(express.static(path.join(__dirname, "public")));
-// app.use(cors(corsOptions));
 app.use(cors());
 
 const upload = multer(); // Use multer without specifying a destination
@@ -33,7 +24,7 @@ app.post("/upload", upload.single("file"), (req, res) => {
   }
 
   const fileId = crypto.randomBytes(16).toString("hex");
-  const fileLink = `http://localhost:5000/file/${fileId}/download`;
+  const fileLink = `https://sharezy.onrender.com/file/${fileId}/download`;
 
   // Store file metadata including the file buffer
   fileStore[fileId] = {
