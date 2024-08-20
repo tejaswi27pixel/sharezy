@@ -6,18 +6,17 @@ const fs = require("fs");
 const app = express();
 const cors = require("cors");
 
-var corsOptions = {
-  origin: [
-    "http://localhost:3000",
-    "http://web-cipherpad.abierta.cloud",
-    "https://web-cipherpad.abierta.cloud",
-    "https://www.web-cipherpad.abierta.cloud",
-    "http://192.168.1.3:3000",
-  ],
-  optionsSuccessStatus: 200,
-};
+// var corsOptions = {
+//   origin: [
+//     "http://localhost:3000",
+//     "http://192.168.1.5:3000",
+//     "**"
+//   ],
+//   optionsSuccessStatus: 200,
+// };
 app.use(express.static(path.join(__dirname, "public")));
-app.use(cors(corsOptions));
+// app.use(cors(corsOptions));
+app.use(cors());
 
 const upload = multer(); // Use multer without specifying a destination
 
