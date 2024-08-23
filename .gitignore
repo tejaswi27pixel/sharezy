@@ -6,8 +6,8 @@
 # Node artifact files
 node_modules/
 dist/
-mailConfig.js
-.mailConfig.js
+# mailConfig.js
+# .mailConfig.js
 
 
 # Compiled Java class files
