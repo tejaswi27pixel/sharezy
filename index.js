@@ -18,11 +18,21 @@ app.use(express.json());
 dotenv.config();
 
 // Create an HTTP server and attach Socket.io to it
+const allowedOrigins = [
+  "http://192.168.1.4:3000",
+  "https://sharezy.tejaswianand.com",
+  "http://localhost:3000", // Add this if you're also testing locally
+];
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin:
-      "http://192.168.1.4:3000, http://192.168.1.4:3000, https://sharezy.tejaswianand.com",
+    origin: (origin, callback) => {
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true); // Allow the request
+      } else {
+        callback(new Error("Not allowed by CORS")); // Block the request
+      }
+    },
     methods: ["GET", "POST"],
   },
 });
