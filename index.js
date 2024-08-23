@@ -1,64 +1,79 @@
 const express = require("express");
-const multer = require("multer");
 const path = require("path");
 const crypto = require("crypto");
 const fs = require("fs");
 const app = express();
 const cors = require("cors");
+const rateLimit = require("express-rate-limit");
+const dotenv = require("dotenv");
+const mongoose = require("mongoose");
+const authRoutes = require("./Routes/Auth");
+const fileRoutes = require("./Routes/Files");
+const http = require("http");
+const { Server } = require("socket.io");
 
-app.use(express.static(path.join(__dirname, "public")));
 app.use(cors());
-
-const upload = multer(); // Use multer without specifying a destination
-
-const fileStore = {}; // In-memory storage for file metadata
-
 app.use(express.json());
 
-app.post("/upload", upload.single("file"), (req, res) => {
-  const file = req.file;
-  const { description, password } = req.body;
+dotenv.config();
 
-  if (!file) {
-    return res.status(400).json({ error: "File upload failed." });
-  }
-
-  const fileId = crypto.randomBytes(16).toString("hex");
-  const fileLink = `https://sharezy.onrender.com/file/${fileId}/download`;
-
-  // Store file metadata including the file buffer
-  fileStore[fileId] = {
-    fileBuffer: file.buffer, // Store the file buffer
-    description,
-    password,
-    originalName: file.originalname,
-  };
-
-  res.json({ fileLink });
+// Create an HTTP server and attach Socket.io to it
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin:
+      "http://192.168.1.4:3000, http://192.168.1.4:3000, https://sharezy.tejaswianand.com",
+    methods: ["GET", "POST"],
+  },
 });
 
-app.get("/file/:fileId/download", (req, res) => {
-  const { fileId } = req.params;
-  const { password } = req.query;
+app.use(express.static(path.join(__dirname, "public")));
 
-  const fileMetadata = fileStore[fileId];
-
-  if (!fileMetadata) {
-    return res.status(404).send("File not found.");
-  }
-
-  if (fileMetadata.password && fileMetadata.password !== password) {
-    return res.status(403).send("Incorrect password.");
-  }
-
-  // Send the file buffer directly
-  res.setHeader(
-    "Content-Disposition",
-    `attachment; filename=${fileMetadata.originalName}`
-  );
-  res.setHeader("Content-Type", "application/octet-stream");
-  res.send(fileMetadata.fileBuffer);
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 1000,
+  message: "Too many requests from this IP, please try again later.",
 });
+app.use(limiter);
+
+mongoose.connect(process.env.DB_URL, {
+  useUnifiedTopology: true,
+});
+
+mongoose.connection.on("connected", () => {
+  console.log("Connected to MongoDB");
+});
+
+mongoose.connection.on("error", (err) => {
+  console.error("MongoDB connection error:", err);
+});
+io.on("connection", (socket) => {
+  console.log("A user connected:", socket.id);
+
+  socket.on("offer", (data) => {
+    console.log("Offer received:", data);
+    socket.broadcast.emit("offer", data); // Forward offer to other peers
+  });
+
+  socket.on("answer", (data) => {
+    console.log("Answer received:", data);
+    socket.broadcast.emit("answer", data); // Forward answer to other peers
+  });
+
+  socket.on("candidate", (candidate) => {
+    console.log("ICE candidate received:", candidate);
+    socket.broadcast.emit("candidate", candidate); // Forward ICE candidate to other peers
+  });
+
+  socket.on("disconnect", () => {
+    console.log("User disconnected:", socket.id);
+  });
+});
+
+app.use("/api/auth", authRoutes);
+app.use("/api/files", fileRoutes);
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+// Start the server using the HTTP server instance
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
